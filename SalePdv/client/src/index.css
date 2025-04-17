@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --beach-yellow: #FFD700;  /* Amarelo principal */
+  --beach-red: #FF4136;     /* Vermelho vibrante */
+  --beach-white: #FFFFFF;   /* Branco puro */
+  --beach-sand: #F5F5DC;    /* Tom areia claro */
+  --beach-orange: #FF6700;  /* Laranja mais escuro para maior contraste */
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+  
+  .bg-beach-yellow {
+    background-color: var(--beach-yellow);
+  }
+  
+  .bg-beach-red {
+    background-color: var(--beach-red);
+  }
+  
+  .bg-beach-white {
+    background-color: var(--beach-white);
+  }
+  
+  .bg-beach-sand {
+    background-color: var(--beach-sand);
+  }
+  
+  .bg-beach-orange {
+    background-color: var(--beach-orange);
+  }
+  
+  .text-beach-yellow {
+    color: var(--beach-yellow);
+  }
+  
+  .text-beach-red {
+    color: var(--beach-red);
+  }
+  
+  .text-beach-orange {
+    color: var(--beach-orange);
+  }
+  
+  .border-beach-yellow {
+    border-color: var(--beach-yellow);
+  }
+  
+  .border-beach-red {
+    border-color: var(--beach-red);
+  }
+  
+  .border-beach-orange {
+    border-color: var(--beach-orange);
+  }
+}
