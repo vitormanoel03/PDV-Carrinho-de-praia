@@ -358,77 +358,26 @@ export default function ClientOrderPage() {
                               </CardTitle>
                             </CardHeader>
                             <CardContent className="p-3">
-                              <p className="text-sm text-gray-600 mb-2">{product.description}</p>
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <div className="flex flex-col gap-2">
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                          const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
-                                          const currentValue = parseInt(input.value);
-                                          if (currentValue > 1) {
-                                            input.value = (currentValue - 1).toString();
-                                          }
-                                        }}
-                                      >
-                                        <Minus className="h-4 w-4" />
-                                      </Button>
-                                      <Input
-                                        id={`quantity-${product.id}`}
-                                        type="number"
-                                        min="1"
-                                        defaultValue="1"
-                                        className="w-20 text-center"
-                                      />
-                                      <Button 
-                                        variant="outline" 
-                                        size="icon" 
-                                        className="h-8 w-8"
-                                        onClick={() => {
-                                          const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
-                                          const currentValue = parseInt(input.value);
-                                          input.value = (currentValue + 1).toString();
-                                        }}
-                                      >
-                                        <Plus className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                    <Button 
-                                      className="w-full bg-beach-yellow text-black hover:bg-yellow-600"
-                                      onClick={() => {
-                                        const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
-                                        const quantity = parseInt(input.value || "1");
-                                        addToCart(product, quantity);
-                                      }}
-                                    >
-                                      <Plus className="mr-2 h-4 w-4" /> Adicionar ao Carrinho
-                                    </Button>
-                                  </div>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>{product.name}</DialogTitle>
-                                    <DialogDescription>
-                                      Adicione observações e a quantidade do item.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="grid gap-4 py-4">
-                                    <Textarea
-                                      placeholder="Alguma observação? (Ex: sem gelo, bem passado, etc)"
-                                      value={productNote}
-                                      onChange={(e) => setProductNote(e.target.value)}
-                                    />
-                                    
-                                  </div>
-                                  <DialogFooter>
-                                    
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
+                              {product.description && <p>Descrição: {product.description}</p>}
+                              <div className="flex items-center gap-2 mt-2">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  defaultValue="1"
+                                  className="w-20"
+                                  id={`quantity-${product.id}`}
+                                />
+                                <Button
+                                  onClick={() => {
+                                    const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
+                                    const quantity = parseInt(input.value) || 1;
+                                    addToCart(product, quantity);
+                                  }}
+                                  className="bg-beach-yellow text-black hover:bg-beach-yellow/90"
+                                >
+                                  Adicionar
+                                </Button>
+                              </div>
                             </CardContent>
                           </Card>
                         ))}
