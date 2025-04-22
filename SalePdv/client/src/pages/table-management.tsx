@@ -115,12 +115,13 @@ export default function TableManagementPage() {
     <div className="container mx-auto py-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Gerenciamento de Mesas</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" /> Adicionar Mesa
-            </Button>
-          </DialogTrigger>
+        <div className="flex gap-2">
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-beach-yellow text-black hover:bg-yellow-600">
+                <Plus className="h-4 w-4 mr-2" /> Adicionar Nova Mesa
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -136,11 +137,16 @@ export default function TableManagementPage() {
                   value={tableForm.number}
                   onChange={(e) => setTableForm({ number: e.target.value })}
                   placeholder="Digite o número da mesa"
+                  className="mb-2"
                   required
                 />
+                <p className="text-sm text-gray-500 mb-4">Digite um número único para identificar a mesa</p>
               </div>
-              <Button type="submit" className="w-full">
-                {editingTable ? "Atualizar" : "Criar"}
+              <Button 
+                type="submit" 
+                className="w-full bg-beach-yellow text-black hover:bg-yellow-600"
+              >
+                {editingTable ? "Atualizar Mesa" : "Criar Nova Mesa"}
               </Button>
             </form>
           </DialogContent>
