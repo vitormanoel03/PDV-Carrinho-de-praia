@@ -1,0 +1,20 @@
+modules = ["nodejs-20", "web"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "dev"
+
+[[workflows.workflow]]
+name = "dev"
+author = 16262921
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
