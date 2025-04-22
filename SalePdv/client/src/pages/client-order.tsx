@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, LogOut, Plus, Trash2, ShoppingCart, CoffeeIcon, Umbrella, Sun, AlertTriangle } from "lucide-react";
+import { Loader2, LogOut, Plus, Trash2, ShoppingCart, CoffeeIcon, Umbrella, Sun, AlertTriangle, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function ClientOrderPage() {
@@ -32,7 +32,7 @@ export default function ClientOrderPage() {
       setSelectedTable(user.tableId);
     }
   }, [user]);
-  
+
   // Buscar a mesa do cliente se já estiver definida ou mesas disponíveis caso contrário
   const {
     data: tables = [],
@@ -41,7 +41,7 @@ export default function ClientOrderPage() {
     queryKey: ["/api/tables/available"],
     staleTime: 10000,
   });
-  
+
   // Também buscar a mesa atual do usuário para exibição correta
   const {
     data: currentTable,
@@ -98,20 +98,20 @@ export default function ClientOrderPage() {
       });
     },
   });
-  
+
   // Mutação para atualizar um pedido existente
   const updateOrderMutation = useMutation({
     mutationFn: async ({ id, items, status }: { id: string; items: OrderItem[]; status?: string }) => {
       // Recalcular o total
       const total = items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-      
+
       const payload: any = { items, total };
-      
+
       // Se status foi fornecido, adicione ao payload
       if (status) {
         payload.status = status;
       }
-      
+
       const res = await apiRequest("PATCH", `/api/orders/${id}`, payload);
       return await res.json();
     },
@@ -144,7 +144,7 @@ export default function ClientOrderPage() {
   // Adicionar item ao carrinho
   const addToCart = (product: Product, quantity = 1) => {
     const existingItem = cartItems.find(item => item.productId === product.id);
-    
+
     if (existingItem) {
       setCartItems(
         cartItems.map(item =>
@@ -163,9 +163,9 @@ export default function ClientOrderPage() {
       };
       setCartItems([...cartItems, newItem]);
     }
-    
+
     setProductNote("");
-    
+
     toast({
       title: "Item adicionado",
       description: `${quantity}x ${product.name} adicionado ao carrinho`,
@@ -206,7 +206,7 @@ export default function ClientOrderPage() {
     // Se não temos o número da mesa do usuário, tentamos buscar nas mesas disponíveis
     if (!tableNumber) {
       const selectedTableObj = tables.find(table => table.id === selectedTable);
-      
+
       if (!selectedTableObj) {
         // Se não encontramos nas mesas disponíveis, usamos a mesa atual buscada via API
         if (currentTable) {
@@ -361,9 +361,53 @@ export default function ClientOrderPage() {
                               <p className="text-sm text-gray-600 mb-2">{product.description}</p>
                               <Dialog>
                                 <DialogTrigger asChild>
-                                  <Button className="w-full bg-beach-yellow text-black hover:bg-yellow-600">
-                                    <Plus className="mr-2 h-4 w-4" /> Adicionar
-                                  </Button>
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-8 w-8"
+                                        onClick={() => {
+                                          const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
+                                          const currentValue = parseInt(input.value);
+                                          if (currentValue > 1) {
+                                            input.value = (currentValue - 1).toString();
+                                          }
+                                        }}
+                                      >
+                                        <Minus className="h-4 w-4" />
+                                      </Button>
+                                      <Input
+                                        id={`quantity-${product.id}`}
+                                        type="number"
+                                        min="1"
+                                        defaultValue="1"
+                                        className="w-20 text-center"
+                                      />
+                                      <Button 
+                                        variant="outline" 
+                                        size="icon" 
+                                        className="h-8 w-8"
+                                        onClick={() => {
+                                          const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
+                                          const currentValue = parseInt(input.value);
+                                          input.value = (currentValue + 1).toString();
+                                        }}
+                                      >
+                                        <Plus className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                    <Button 
+                                      className="w-full bg-beach-yellow text-black hover:bg-yellow-600"
+                                      onClick={() => {
+                                        const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
+                                        const quantity = parseInt(input.value || "1");
+                                        addToCart(product, quantity);
+                                      }}
+                                    >
+                                      <Plus className="mr-2 h-4 w-4" /> Adicionar ao Carrinho
+                                    </Button>
+                                  </div>
                                 </DialogTrigger>
                                 <DialogContent>
                                   <DialogHeader>
@@ -378,35 +422,17 @@ export default function ClientOrderPage() {
                                       value={productNote}
                                       onChange={(e) => setProductNote(e.target.value)}
                                     />
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium">Quantidade:</span>
-                                      <Input
-                                        type="number"
-                                        min="1"
-                                        defaultValue="1"
-                                        className="w-20"
-                                        id="quantity"
-                                      />
-                                    </div>
+                                    
                                   </div>
                                   <DialogFooter>
-                                    <Button 
-                                      className="bg-beach-yellow text-black hover:bg-yellow-600"
-                                      onClick={() => {
-                                        const quantityInput = document.getElementById("quantity") as HTMLInputElement;
-                                        const quantity = parseInt(quantityInput?.value || "1");
-                                        addToCart(product, quantity);
-                                      }}
-                                    >
-                                      Adicionar ao Pedido
-                                    </Button>
+                                    
                                   </DialogFooter>
                                 </DialogContent>
                               </Dialog>
                             </CardContent>
                           </Card>
                         ))}
-                        
+
                         {filteredProducts.length === 0 && (
                           <div className="text-center py-6 text-gray-500 col-span-2">
                             Nenhum produto encontrado nesta categoria
@@ -569,7 +595,7 @@ export default function ClientOrderPage() {
               Revise seus itens antes de finalizar o pedido
             </DialogDescription>
           </DialogHeader>
-          
+
           <ScrollArea className="max-h-[40vh]">
             <div className="space-y-4">
               {cartItems.map((item) => (
@@ -595,7 +621,7 @@ export default function ClientOrderPage() {
               ))}
             </div>
           </ScrollArea>
-          
+
           <div className="pt-4 border-t">
             <div className="flex justify-between font-bold text-lg">
               <span>Total:</span>
@@ -631,7 +657,7 @@ export default function ClientOrderPage() {
               Você pode ajustar a quantidade ou remover itens do seu pedido.
             </DialogDescription>
           </DialogHeader>
-          
+
           {editingOrder && (
             <>
               <ScrollArea className="max-h-[40vh]">
@@ -701,7 +727,7 @@ export default function ClientOrderPage() {
                   ))}
                 </div>
               </ScrollArea>
-              
+
               <div className="pt-4 border-t">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total:</span>
