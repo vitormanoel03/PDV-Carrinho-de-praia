@@ -18,3 +18,7 @@ args = "cd SalePdv && npm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd SalePdv && npm run dev"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
