@@ -19,6 +19,7 @@ export default function AdminDashboardPage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [selectedTab, setSelectedTab] = useState("mesas");
+  const [selectedTable, setSelectedTable] = useState<Table | null>(null);
 
   // Buscar mesas
   const {
@@ -86,14 +87,14 @@ export default function AdminDashboardPage() {
 
   // Agrupar pedidos por mesa
   const ordersByTable: Record<string, Order[]> = {};
-  
+
   // Inicializar para garantir que todas as mesas tenham uma entrada
   tables.forEach(table => {
     if (table.id) {
       ordersByTable[table.id] = [];
     }
   });
-  
+
   // Preencher com os pedidos
   orders.forEach(order => {
     if (order.tableId && ordersByTable[order.tableId]) {
@@ -193,7 +194,12 @@ export default function AdminDashboardPage() {
           <TabsContent value="mesas" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {tables.map((table) => (
-                <Card key={table.id} className={table.status === "occupied" ? "border-beach-yellow" : ""}>
+                <Card key={table.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => {
+                  const tableOrders = table.id && ordersByTable[table.id] || [];
+                  if (tableOrders.length > 0) {
+                    setSelectedTable(table);
+                  }
+                }}>
                   <CardHeader className={`${table.status === "occupied" ? "bg-beach-yellow text-black" : "bg-gray-100"}`}>
                     <CardTitle className="flex justify-between items-center">
                       <span>Mesa {table.number}</span>
@@ -204,130 +210,11 @@ export default function AdminDashboardPage() {
                   </CardHeader>
                   <CardContent className="p-4">
                     {table.status === "occupied" && ordersByTable && table.id && ordersByTable[table.id] ? (
-                      <div className="space-y-4">
-                        <ScrollArea className="h-48">
-                          {table.id && ordersByTable[table.id].map((order: Order) => (
-                            <div key={order.id} className="mb-4 p-3 border rounded-md">
-                              <div className="flex justify-between items-center mb-2">
-                                <div className="font-semibold">Pedido #{order.orderCode || order.id?.substring(0, 6)}</div>
-                                <Badge className={getStatusColor(order.status)}>
-                                  {order.status === "aguardando" && "Aguardando"}
-                                  {order.status === "em_preparo" && "Em Preparo"}
-                                  {order.status === "entregue" && "Entregue"}
-                                  {order.status === "cancelado" && "Cancelado"}
-                                </Badge>
-                              </div>
-                              <div className="text-sm space-y-1">
-                                {order.items && order.items.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between">
-                                    <span>{item.quantity}x {item.name || item.productName}</span>
-                                    <span>R$ {item.price.toFixed(2)}</span>
-                                  </div>
-                                ))}
-                                <div className="font-bold mt-2 pt-2 border-t flex justify-between">
-                                  <span>Total:</span>
-                                  <span>R$ {order.total.toFixed(2)}</span>
-                                </div>
-                              </div>
-                              {/* Botões de ação baseados no status atual */}
-                              <div className="mt-3 flex justify-between gap-2">
-                                {order.status === "aguardando" && (
-                                  <>
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          className="flex-1 bg-beach-orange hover:bg-orange-800 text-white font-medium"
-                                        >
-                                          <Clock className="mr-1 h-4 w-4" /> Preparar
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Preparar Pedido</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Confirma iniciar o preparo deste pedido? O status será atualizado para "Em Preparo".
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            className="bg-beach-orange hover:bg-orange-800 text-white font-medium"
-                                            onClick={() => handleUpdateOrderStatus(order.id!, "em_preparo")}
-                                          >
-                                            Sim, iniciar preparo
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                    
-                                    <AlertDialog>
-                                      <AlertDialogTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          variant="destructive"
-                                          className="flex-1"
-                                        >
-                                          <AlertTriangle className="mr-1 h-4 w-4" /> Cancelar
-                                        </Button>
-                                      </AlertDialogTrigger>
-                                      <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                          <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
-                                          <AlertDialogDescription>
-                                            Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
-                                          </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                          <AlertDialogCancel>Não, manter</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            className="bg-beach-red"
-                                            onClick={() => handleUpdateOrderStatus(order.id!, "cancelado")}
-                                          >
-                                            Sim, cancelar
-                                          </AlertDialogAction>
-                                        </AlertDialogFooter>
-                                      </AlertDialogContent>
-                                    </AlertDialog>
-                                  </>
-                                )}
-                                {order.status === "em_preparo" && (
-                                  <Button
-                                    size="sm"
-                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white"
-                                    onClick={() => handleUpdateOrderStatus(order.id!, "entregue")}
-                                  >
-                                    <Check className="mr-1 h-4 w-4" /> Marcar como Entregue
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </ScrollArea>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="outline" className="w-full">
-                              Liberar Mesa
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Liberar Mesa</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Tem certeza que deseja liberar esta mesa? Isso irá marcá-la como disponível e finalizar todos os pedidos pendentes.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-beach-yellow text-black hover:bg-yellow-600"
-                                onClick={() => handleClearTable(table.id!)}
-                              >
-                                Liberar Mesa
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                      <div>
+                        <p className="text-sm text-gray-500">{ordersByTable[table.id].length} pedido(s) ativos</p>
+                        <p className="text-sm font-medium mt-2">
+                          Total: R$ {ordersByTable[table.id].reduce((sum, order) => sum + order.total, 0).toFixed(2)}
+                        </p>
                       </div>
                     ) : (
                       <div className="text-center py-4 text-gray-500">
@@ -363,7 +250,7 @@ export default function AdminDashboardPage() {
                       Cancelados
                     </TabsTrigger>
                   </TabsList>
-                  
+
                   {["aguardando", "em_preparo", "entregue", "cancelado"].map((status) => (
                     <TabsContent key={status} value={status} className="pt-4">
                       <ScrollArea className="h-[60vh]">
@@ -395,7 +282,7 @@ export default function AdminDashboardPage() {
                                       <span>R$ {order.total.toFixed(2)}</span>
                                     </div>
                                   </div>
-                                  
+
                                   {/* Ações baseadas no status atual */}
                                   <div className="mt-4 flex gap-2">
                                     {status === "aguardando" && (
@@ -427,7 +314,7 @@ export default function AdminDashboardPage() {
                                             </AlertDialogFooter>
                                           </AlertDialogContent>
                                         </AlertDialog>
-                                        
+
                                         <AlertDialog>
                                           <AlertDialogTrigger asChild>
                                             <Button
@@ -471,7 +358,7 @@ export default function AdminDashboardPage() {
                                 </CardContent>
                               </Card>
                             ))}
-                          
+
                           {orders.filter(order => order.status === status).length === 0 && (
                             <div className="text-center py-6 text-gray-500">
                               Nenhum pedido com status "{status === "aguardando" ? "Aguardando" : 
@@ -487,10 +374,119 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           </TabsContent>
+          {selectedTable && (
+            <Dialog open={selectedTable !== null}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Pedidos da Mesa {selectedTable.number}</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="h-96">
+                {selectedTable.id && ordersByTable[selectedTable.id]?.map((order:Order) => (
+                  <div key={order.id} className="mb-4 p-3 border rounded-md">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="font-semibold">Pedido #{order.orderCode || order.id?.substring(0, 6)}</div>
+                      <Badge className={getStatusColor(order.status)}>
+                        {order.status === "aguardando" && "Aguardando"}
+                        {order.status === "em_preparo" && "Em Preparo"}
+                        {order.status === "entregue" && "Entregue"}
+                        {order.status === "cancelado" && "Cancelado"}
+                      </Badge>
+                    </div>
+                    <div className="text-sm space-y-1">
+                      {order.items && order.items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between">
+                          <span>{item.quantity}x {item.name || item.productName}</span>
+                          <span>R$ {item.price.toFixed(2)}</span>
+                        </div>
+                      ))}
+                      <div className="font-bold mt-2 pt-2 border-t flex justify-between">
+                        <span>Total:</span>
+                        <span>R$ {order.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                    {/* Botões de ação baseados no status atual */}
+                    <div className="mt-3 flex justify-between gap-2">
+                      {order.status === "aguardando" && (
+                        <>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                className="flex-1 bg-beach-orange hover:bg-orange-800 text-white font-medium"
+                              >
+                                <Clock className="mr-1 h-4 w-4" /> Preparar
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Preparar Pedido</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Confirma iniciar o preparo deste pedido? O status será atualizado para "Em Preparo".
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-beach-orange hover:bg-orange-800 text-white font-medium"
+                                  onClick={() => handleUpdateOrderStatus(order.id!, "em_preparo")}
+                                >
+                                  Sim, iniciar preparo
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                className="flex-1"
+                              >
+                                <AlertTriangle className="mr-1 h-4 w-4" /> Cancelar
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancelar Pedido</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja cancelar este pedido? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Não, manter</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-beach-red"
+                                  onClick={() => handleUpdateOrderStatus(order.id!, "cancelado")}
+                                >
+                                  Sim, cancelar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                      {order.status === "em_preparo" && (
+                        <Button
+                          size="sm"
+                          className="flex-1 bg-green-500 hover:bg-green-600 text-white"
+                          onClick={() => handleUpdateOrderStatus(order.id!, "entregue")}
+                        >
+                          <Check className="mr-1 h-4 w-4" /> Marcar como Entregue
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                </ScrollArea>
+                <DialogFooter>
+                  <Button onClick={() => setSelectedTable(null)}>Fechar</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </Tabs>
       </main>
-      
-
     </div>
   );
 }
