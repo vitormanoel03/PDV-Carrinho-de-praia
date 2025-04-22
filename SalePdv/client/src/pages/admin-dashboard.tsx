@@ -147,14 +147,24 @@ export default function AdminDashboardPage() {
           </h1>
           <div className="flex items-center gap-4">
             <span>Olá, {user?.name || user?.username}</span>
-            <Button 
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.href = '/products'}
-              className="bg-beach-yellow text-black hover:bg-yellow-600"
-            >
-              <ShoppingBasket className="mr-2 h-4 w-4" /> Gerenciar Produtos
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = '/products'}
+                className="bg-beach-yellow text-black hover:bg-yellow-600"
+              >
+                <ShoppingBasket className="mr-2 h-4 w-4" /> Gerenciar Produtos
+              </Button>
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => window.location.href = '/tables'}
+                className="bg-beach-yellow text-black hover:bg-yellow-600"
+              >
+                <Users className="mr-2 h-4 w-4" /> Gerenciar Mesas
+              </Button>
+            </div>
             <Button 
               variant="destructive" 
               size="sm" 

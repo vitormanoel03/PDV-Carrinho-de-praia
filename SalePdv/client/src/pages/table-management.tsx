@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { Table } from "@shared/schema";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, Coffee } from "lucide-react";
 
 export default function TableManagementPage() {
+  const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
@@ -19,8 +21,9 @@ export default function TableManagementPage() {
     number: "",
   });
 
-  const { data: tables = [] } = useQuery<Table[]>({
+  const { data: tables = [], isLoading } = useQuery<Table[]>({
     queryKey: ["/api/tables"],
+    staleTime: 10000,
   });
 
   const createTableMutation = useMutation({
@@ -37,13 +40,6 @@ export default function TableManagementPage() {
         description: "A mesa foi criada com sucesso",
       });
     },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao criar mesa",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
   });
 
   const updateTableMutation = useMutation({
@@ -54,16 +50,10 @@ export default function TableManagementPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tables"] });
       setEditingTable(null);
+      setIsAddDialogOpen(false);
       toast({
         title: "Mesa atualizada",
         description: "A mesa foi atualizada com sucesso",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao atualizar mesa",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -78,13 +68,6 @@ export default function TableManagementPage() {
       toast({
         title: "Mesa excluída",
         description: "A mesa foi excluída com sucesso",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Erro ao excluir mesa",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -111,66 +94,78 @@ export default function TableManagementPage() {
     }
   };
 
+  if (isLoading) {
+    return <div>Carregando...</div>;
+  }
+
   return (
-    <div className="container mx-auto py-8">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Gerenciamento de Mesas</h1>
-        <div className="flex gap-2">
+    <div className="min-h-screen bg-beach-sand">
+      <header className="bg-beach-yellow text-black p-4 shadow-md">
+        <div className="container mx-auto flex justify-between items-center">
+          <h1 className="text-xl font-bold flex items-center">
+            <Coffee className="mr-2" /> Gerenciamento de Mesas
+          </h1>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/admin'}
+            className="bg-beach-yellow text-black hover:bg-yellow-600"
+          >
+            Voltar ao Painel
+          </Button>
+        </div>
+      </header>
+
+      <main className="container mx-auto py-6 px-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-semibold">Mesas Cadastradas</h2>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button className="bg-beach-yellow text-black hover:bg-yellow-600">
-                <Plus className="h-4 w-4 mr-2" /> Adicionar Nova Mesa
+                <Plus className="h-4 w-4 mr-2" /> Adicionar Mesa
               </Button>
             </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingTable ? "Editar Mesa" : "Adicionar Nova Mesa"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="number">Número da Mesa</Label>
-                <Input
-                  id="number"
-                  type="number"
-                  value={tableForm.number}
-                  onChange={(e) => setTableForm({ number: e.target.value })}
-                  placeholder="Digite o número da mesa"
-                  className="mb-2"
-                  required
-                />
-                <p className="text-sm text-gray-500 mb-4">Digite um número único para identificar a mesa</p>
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full bg-beach-yellow text-black hover:bg-yellow-600"
-              >
-                {editingTable ? "Atualizar Mesa" : "Criar Nova Mesa"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {editingTable ? "Editar Mesa" : "Adicionar Nova Mesa"}
+                </DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <Label htmlFor="number">Número da Mesa</Label>
+                  <Input
+                    id="number"
+                    type="number"
+                    value={tableForm.number}
+                    onChange={(e) => setTableForm({ number: e.target.value })}
+                    placeholder="Digite o número da mesa"
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full bg-beach-yellow text-black hover:bg-yellow-600">
+                  {editingTable ? "Atualizar Mesa" : "Criar Mesa"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {tables.map((table) => (
-          <Card key={table.id}>
-            <CardHeader>
-              <CardTitle>Mesa {table.number}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex justify-between items-center">
-                <span
-                  className={`px-2 py-1 rounded-full text-sm ${
-                    table.status === "available"
-                      ? "bg-green-100 text-green-800"
-                      : "bg-yellow-100 text-yellow-800"
-                  }`}
-                >
-                  {table.status === "available" ? "Disponível" : "Ocupada"}
-                </span>
-                <div className="space-x-2">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {tables.map((table) => (
+            <Card key={table.id}>
+              <CardHeader>
+                <CardTitle className="flex justify-between items-center">
+                  <span>Mesa {table.number}</span>
+                  <span className={`px-2 py-1 rounded-full text-sm ${
+                    table.status === "available" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"
+                  }`}>
+                    {table.status === "available" ? "Disponível" : "Ocupada"}
+                  </span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-2 justify-end">
                   <Button
                     variant="outline"
                     size="sm"
@@ -194,11 +189,11 @@ export default function TableManagementPage() {
                     <Trash2 className="h-4 w-4 mr-1" /> Excluir
                   </Button>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }
