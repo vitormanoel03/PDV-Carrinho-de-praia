@@ -305,15 +305,15 @@ export default function ClientOrderPage() {
                 {!selectedTable ? (
                   <div className="text-center py-6">
                     <h3 className="font-bold mb-2">Selecione uma mesa</h3>
-                    {/* Se o usuário for cliente e já tiver uma mesa associada, não mostrar a seleção de mesas */}
+                    {/* Se o usuário for cliente e já tiver uma mesa associada, mostrar botão de novo pedido */}
                     {user?.role === 'client' && user?.tableId ? (
                       <div className="bg-yellow-50 p-4 rounded-lg border border-beach-yellow">
-                        <p className="text-gray-700">Você já está associado à Mesa {user.tableNumber}.</p>
+                        <p className="text-gray-700">Mesa {user.tableNumber}</p>
                         <Button
-                          className="mt-2 bg-beach-yellow text-black hover:bg-yellow-600"
+                          className="mt-2 w-full bg-beach-yellow text-black hover:bg-yellow-600"
                           onClick={() => setSelectedTable(user.tableId!)}
                         >
-                          Novo pedido
+                          Fazer Novo Pedido
                         </Button>
                       </div>
                     ) : (
