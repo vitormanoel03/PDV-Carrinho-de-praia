@@ -271,6 +271,15 @@ export default function ClientOrderPage() {
             Carrinho de Praia
           </h1>
           <div className="flex items-center gap-4">
+            <Button 
+              className="bg-beach-orange hover:bg-orange-600 text-white"
+              onClick={() => {
+                setSelectedTable(null);
+                setCartItems([]);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Novo Pedido
+            </Button>
             <span>Olá, {user?.name || user?.username}</span>
             <Button 
               variant="destructive" 
