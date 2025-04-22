@@ -62,14 +62,20 @@ export default function ProductManagementPage() {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (productId: string) => {
-      const res = await apiRequest("DELETE", `/api/products/${productId}`);
-      return res.json();
+      await apiRequest("DELETE", `/api/products/${productId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products"] });
       toast({
         title: "Produto removido",
         description: "O produto foi removido com sucesso",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao remover",
+        description: "Não foi possível remover o produto",
+        variant: "destructive",
       });
     },
   });

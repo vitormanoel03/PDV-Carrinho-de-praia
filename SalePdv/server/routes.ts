@@ -270,8 +270,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!success) {
         return res.status(404).json({ message: "Produto não encontrado" });
       }
-      res.status(204).send();
+      res.status(200).json({ message: "Produto excluído com sucesso" });
     } catch (error) {
+      console.error("Erro ao excluir produto:", error);
       res.status(500).json({ message: "Erro ao excluir produto" });
     }
   });
