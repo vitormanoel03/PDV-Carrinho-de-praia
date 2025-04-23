@@ -478,17 +478,14 @@ export default function AuthPage() {
                               <p className="text-sm text-red-500">Não há mesas disponíveis no momento.</p>
                             ) : (
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {tables.map((table) => {
-                                  const isOccupied = table.status === 'occupied';
+                                {tables.filter(table => table.status === 'available').map((table) => {
                                   const isSelected = selectedTable?.id === table.id;
                                   
                                   return (
                                     <div 
                                       key={table.id}
                                       onClick={() => {
-                                        if (!isOccupied) {
-                                          setSelectedTable({ id: table.id || '', number: table.number });
-                                        }
+                                        setSelectedTable({ id: table.id || '', number: table.number });
                                       }}
                                       className={`
                                         border rounded-md py-2 px-3 text-center transition-all relative

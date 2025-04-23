@@ -448,8 +448,11 @@ export default function ClientOrderPage() {
                                 <CardTitle className="text-sm">
                                   Mesa {order.tableNumber} - Pedido #{order.orderCode || parseInt(order.id?.substring(0, 8) || "0", 16)}
                                 </CardTitle>
-                                <Badge className="bg-white text-black">
+                                <Badge className={`${statusInfo.color} flex items-center gap-2`}>
                                   {statusInfo.text}
+                                  {order.status === "aguardando" && (
+                                    <div className="w-2 h-2 bg-beach-orange rounded-full animate-pulse"></div>
+                                  )}
                                 </Badge>
                               </div>
                             </CardHeader>
