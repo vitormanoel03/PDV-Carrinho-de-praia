@@ -489,11 +489,9 @@ export default function AuthPage() {
                                       }}
                                       className={`
                                         border rounded-md py-2 px-3 text-center transition-all relative
-                                        ${isOccupied 
-                                          ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed opacity-75' 
-                                          : isSelected
-                                            ? 'bg-beach-yellow border-beach-red text-black cursor-pointer' 
-                                            : 'bg-white border-gray-200 hover:border-beach-yellow cursor-pointer'
+                                        ${isSelected
+                                          ? 'bg-beach-yellow border-beach-red text-black cursor-pointer' 
+                                          : 'bg-white border-gray-200 hover:border-beach-yellow cursor-pointer'
                                         }
                                       `}
                                     >
