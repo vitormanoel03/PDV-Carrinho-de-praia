@@ -478,30 +478,37 @@ export default function AuthPage() {
                               <p className="text-sm text-red-500">Não há mesas disponíveis no momento.</p>
                             ) : (
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                                {tables.map((table) => (
-                                  <div 
-                                    key={table.id}
-                                    onClick={() => {
-                                      if (table.status !== 'occupied') {
-                                        setSelectedTable({ id: table.id || '', number: table.number });
-                                      }
-                                    }}
-                                    className={`
-                                      border rounded-md py-2 px-3 text-center transition-all
-                                      ${table.status === 'occupied' 
-                                        ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' 
-                                        : selectedTable?.id === table.id 
-                                          ? 'bg-beach-yellow border-beach-red text-black cursor-pointer' 
-                                          : 'bg-white border-gray-200 hover:border-beach-yellow cursor-pointer'
-                                      }
-                                    `}
-                                  >
-                                    Mesa {table.number}
-                                    {table.status === 'occupied' && (
-                                      <div className="text-xs text-gray-500 mt-1">Ocupada</div>
-                                    )}
-                                  </div>
-                                ))}
+                                {tables.map((table) => {
+                                  const isOccupied = table.status === 'occupied';
+                                  const isSelected = selectedTable?.id === table.id;
+                                  
+                                  return (
+                                    <div 
+                                      key={table.id}
+                                      onClick={() => {
+                                        if (!isOccupied) {
+                                          setSelectedTable({ id: table.id || '', number: table.number });
+                                        }
+                                      }}
+                                      className={`
+                                        border rounded-md py-2 px-3 text-center transition-all relative
+                                        ${isOccupied 
+                                          ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed opacity-75' 
+                                          : isSelected
+                                            ? 'bg-beach-yellow border-beach-red text-black cursor-pointer' 
+                                            : 'bg-white border-gray-200 hover:border-beach-yellow cursor-pointer'
+                                        }
+                                      `}
+                                    >
+                                      <div>Mesa {table.number}</div>
+                                      {isOccupied && (
+                                        <div className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded mt-1">
+                                          Mesa Indisponível
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                             {registerForm.formState.errors.tableId && (
