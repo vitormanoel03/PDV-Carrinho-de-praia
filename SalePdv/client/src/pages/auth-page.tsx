@@ -481,16 +481,25 @@ export default function AuthPage() {
                                 {tables.map((table) => (
                                   <div 
                                     key={table.id}
-                                    onClick={() => setSelectedTable({ id: table.id || '', number: table.number })}
+                                    onClick={() => {
+                                      if (table.status !== 'occupied') {
+                                        setSelectedTable({ id: table.id || '', number: table.number });
+                                      }
+                                    }}
                                     className={`
-                                      border rounded-md py-2 px-3 cursor-pointer text-center transition-all
-                                      ${selectedTable?.id === table.id 
-                                        ? 'bg-beach-yellow border-beach-red text-black' 
-                                        : 'bg-white border-gray-200 hover:border-beach-yellow'
+                                      border rounded-md py-2 px-3 text-center transition-all
+                                      ${table.status === 'occupied' 
+                                        ? 'bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed' 
+                                        : selectedTable?.id === table.id 
+                                          ? 'bg-beach-yellow border-beach-red text-black cursor-pointer' 
+                                          : 'bg-white border-gray-200 hover:border-beach-yellow cursor-pointer'
                                       }
                                     `}
                                   >
                                     Mesa {table.number}
+                                    {table.status === 'occupied' && (
+                                      <div className="text-xs text-gray-500 mt-1">Ocupada</div>
+                                    )}
                                   </div>
                                 ))}
                               </div>
