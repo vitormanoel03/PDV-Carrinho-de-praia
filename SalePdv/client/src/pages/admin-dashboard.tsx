@@ -361,7 +361,12 @@ export default function AdminDashboardPage() {
 
                           {orders.filter(order => order.status === status).length === 0 && (
                             <div className="text-center py-6 text-gray-500">
-                              Nenhum pedido com status "{status === "aguardando" ? "Aguardando" : 
+                              Nenhum pedido com status "{status === "aguardando" ? (
+                                <div className="flex items-center">
+                                  Aguardando
+                                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse ml-2"></div>
+                                </div>
+                              ) : 
                                                        status === "em_preparo" ? "Em Preparo" : 
                                                        status === "entregue" ? "Entregue" : "Cancelado"}"
                             </div>

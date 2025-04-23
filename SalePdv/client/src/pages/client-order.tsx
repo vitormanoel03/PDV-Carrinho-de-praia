@@ -253,6 +253,8 @@ export default function ClientOrderPage() {
     }
   };
 
+  const pendingOrdersCount = userOrders.filter(order => order.status === "aguardando").length;
+
   if (isLoadingTables || isLoadingProducts || isLoadingOrders || isLoadingCurrentTable) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -272,14 +274,31 @@ export default function ClientOrderPage() {
           </h1>
           <div className="flex items-center gap-4">
             <span>Olá, {user?.name || user?.username}</span>
-            <Button 
-              variant="destructive" 
-              size="sm" 
-              onClick={handleLogout}
-              className="bg-beach-red hover:bg-red-700"
-            >
-              <LogOut className="mr-2 h-4 w-4" /> Sair
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => {
+                  if (confirm("Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.")) {
+                    fetch("/api/users/" + user?.id, {
+                      method: "DELETE",
+                    }).then(() => {
+                      window.location.href = "/auth";
+                    });
+                  }
+                }}
+              >
+                Excluir Conta
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleLogout}
+                className="bg-beach-red hover:bg-red-700"
+              >
+                <LogOut className="mr-2 h-4 w-4" /> Sair
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -297,6 +316,11 @@ export default function ClientOrderPage() {
                   {selectedTable && (
                     <Badge className="bg-white text-black">
                       Mesa {(user?.tableNumber) || (tables.find(t => t.id === selectedTable)?.number) || "-"}
+                    </Badge>
+                  )}
+                  {pendingOrdersCount > 0 && (
+                    <Badge className="bg-red-500 text-white">
+                      {pendingOrdersCount} pedido(s) aguardando
                     </Badge>
                   )}
                 </CardTitle>
