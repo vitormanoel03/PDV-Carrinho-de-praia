@@ -496,11 +496,6 @@ export default function AuthPage() {
                                       `}
                                     >
                                       <div>Mesa {table.number}</div>
-                                      {isOccupied && (
-                                        <div className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded mt-1">
-                                          Mesa Indisponível
-                                        </div>
-                                      )}
                                     </div>
                                   );
                                 })}
