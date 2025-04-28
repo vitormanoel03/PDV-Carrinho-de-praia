@@ -231,25 +231,47 @@ export default function AdminDashboardPage() {
 
           <TabsContent value="pedidos" className="space-y-4">
             <Card>
-              <CardHeader className="bg-beach-yellow text-black">
-                <CardTitle>Todos os Pedidos</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
-                <Tabs defaultValue="aguardando">
-                  <TabsList className="bg-beach-sand">
-                    <TabsTrigger value="aguardando" className="data-[state=active]:bg-beach-yellow data-[state=active]:text-black">
-                      Aguardando
-                    </TabsTrigger>
-                    <TabsTrigger value="em_preparo" className="data-[state=active]:bg-beach-orange data-[state=active]:text-white">
-                      Em Preparo
-                    </TabsTrigger>
-                    <TabsTrigger value="entregue" className="data-[state=active]:bg-green-500 data-[state=active]:text-white">
-                      Entregues
-                    </TabsTrigger>
-                    <TabsTrigger value="cancelado" className="data-[state=active]:bg-beach-red data-[state=active]:text-white">
-                      Cancelados
-                    </TabsTrigger>
-                  </TabsList>
+            <CardHeader className="bg-beach-yellow text-black">
+  <CardTitle>Todos os Pedidos</CardTitle>
+</CardHeader>
+<CardContent className="p-4">
+  <Tabs defaultValue="aguardando">
+    <TabsList className="bg-beach-sand">
+
+      <TabsTrigger
+        value="aguardando"
+        className="data-[state=active]:bg-beach-yellow data-[state=active]:text-black flex items-center gap-2"
+      >
+        Aguardando
+        {orders.some(order => order.status === "aguardando") && (
+          <div className="w-2 h-2 bg-beach-orange rounded-full animate-pulse" />
+        )}
+      </TabsTrigger>
+
+      <TabsTrigger
+        value="em_preparo"
+        className="data-[state=active]:bg-beach-orange data-[state=active]:text-white"
+      >
+        Em Preparo
+      </TabsTrigger>
+
+      <TabsTrigger
+        value="entregue"
+        className="data-[state=active]:bg-green-500 data-[state=active]:text-white"
+      >
+        Entregues
+      </TabsTrigger>
+
+      <TabsTrigger
+        value="cancelado"
+        className="data-[state=active]:bg-beach-red data-[state=active]:text-white"
+      >
+        Cancelados
+      </TabsTrigger>
+
+    </TabsList>
+  
+
 
                   {["aguardando", "em_preparo", "entregue", "cancelado"].map((status) => (
                     <TabsContent key={status} value={status} className="pt-4">
@@ -270,18 +292,53 @@ export default function AdminDashboardPage() {
                                   </div>
                                 </CardHeader>
                                 <CardContent className="p-4">
-                                  <div className="space-y-2">
-                                    {order.items && order.items.map((item: any, idx: number) => (
-                                      <div key={idx} className="flex justify-between text-sm">
-                                        <span>{item.quantity}x {item.name || item.productName}</span>
-                                        <span>R$ {item.price.toFixed(2)}</span>
-                                      </div>
-                                    ))}
-                                    <div className="pt-2 border-t mt-2 font-semibold flex justify-between">
-                                      <span>Total:</span>
-                                      <span>R$ {order.total.toFixed(2)}</span>
-                                    </div>
-                                  </div>
+                                  
+                                {[...orders]
+  .sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt) : new Date(0);
+    const dateB = b.createdAt ? new Date(b.createdAt) : new Date(0);
+    return dateA.getTime() - dateB.getTime();
+  })
+  .map((order) => (
+    <Card key={order.id} className="mb-4">
+      {/* Cabeçalho com status e horário */}
+      <CardHeader className={`p-4 ${getStatusColor(order.status)}`}>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-base">
+            Mesa {order.tableNumber} - Pedido #{order.orderCode || order.id?.substring(0, 6)}
+          </CardTitle>
+          <Badge className="bg-white text-black">
+            {order.createdAt
+              ? new Date(order.createdAt).toLocaleTimeString("pt-BR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "Sem horário"}
+          </Badge>
+        </div>
+      </CardHeader>
+
+      {/* Conteúdo com itens e total */}
+      <CardContent className="p-4">
+        <div className="space-y-2">
+          {order.items &&
+            order.items.map((item, idx) => (
+              <div key={idx} className="flex justify-between text-sm">
+                <span>
+                  {item.quantity}x { item.productName}
+                </span>
+                <span>R$ {item.price.toFixed(2)}</span>
+              </div>
+            ))}
+          <div className="pt-2 border-t mt-2 font-semibold flex justify-between">
+            <span>Total:</span>
+            <span>R$ {order.total.toFixed(2)}</span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+))}
+
 
                                   {/* Ações baseadas no status atual */}
                                   <div className="mt-4 flex gap-2">

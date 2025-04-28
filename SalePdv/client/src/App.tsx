@@ -13,19 +13,6 @@ import { AuthProvider } from "./hooks/use-auth";
 import { ProtectedRoute } from "./lib/protected-route";
 import { Umbrella, Sun } from "lucide-react";
 
-function HomePage() {
-  return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-beach-sand">
-      <div className="flex items-center text-4xl font-bold mb-2">
-        <Umbrella className="w-8 h-8 mr-2 text-beach-red" />
-        <Sun className="w-8 h-8 mr-2 text-beach-yellow" />
-        <span>Carrinho de Praia</span>
-      </div>
-      <p className="text-xl">Bem-vindo ao sistema de pedidos!</p>
-    </div>
-  );
-}
-
 function Router() {
   return (
     <Switch>
@@ -34,7 +21,7 @@ function Router() {
       <ProtectedRoute path="/products" component={ProductManagementPage} role="admin" />
       <ProtectedRoute path="/tables" component={TableManagementPage} role="admin" />
       <ProtectedRoute path="/order" component={ClientOrderPage} role="client" />
-      <ProtectedRoute path="/" component={HomePage} />
+     
       <Route component={NotFound} />
     </Switch>
   );
