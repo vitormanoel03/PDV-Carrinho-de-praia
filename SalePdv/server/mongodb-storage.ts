@@ -50,7 +50,7 @@ export class MongoDBStorage implements IStorage {
 
   async connect() {
     await this.client.connect();
-    console.log("Conectado ao MongoDB com sucesso");
+    console.log("Claro que funciona, confia");
     
     // Criar índices para pesquisas rápidas
     await this.users.createIndex({ username: 1 }, { unique: true });
@@ -61,21 +61,27 @@ export class MongoDBStorage implements IStorage {
 
   // Implementação dos métodos para User
   async getUser(id: string): Promise<User | undefined> {
-    const user = await this.users.findOne({ id });
+    const user = await this.users.findOne({ cpfouCnpj: id });
     return user || undefined;
   }
 
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    const user = await this.users.findOne({ username });
+  async getUserByCpfouCnpj(cpfouCnpj: string): Promise<User | undefined> {
+    console.log("Searching for user with cpfouCnpj:", cpfouCnpj);
+    const user = await this.users.findOne({ cpfouCnpj });
+    console.log("User found:", user);
     return user || undefined;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = nanoid();
-    const user: User = { ...insertUser, id };
+    const cpfouCnpj =insertUser.cpfouCnpj;
+    const user: User = { ...insertUser, cpfouCnpj};
     await this.users.insertOne(user);
     return user;
   }
+
+
+
 
   async listUsers(): Promise<User[]> {
     return this.users.find().toArray();
@@ -83,7 +89,7 @@ export class MongoDBStorage implements IStorage {
 
   async updateUser(id: string, userData: Partial<User>): Promise<User | undefined> {
     const result = await this.users.findOneAndUpdate(
-      { id },
+      { cpfouCnpj: id },
       { $set: userData },
       { returnDocument: "after" }
     );
@@ -91,11 +97,12 @@ export class MongoDBStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const result = await this.users.deleteOne({ id });
+    const result = await this.users.deleteOne({ cpfouCnpj: id });
     return result.deletedCount > 0;
   }
 
   // Implementação dos métodos para Table
+  
   async getTable(id: string): Promise<Table | undefined> {
     const table = await this.tables.findOne({ id });
     return table || undefined;
@@ -111,6 +118,32 @@ export class MongoDBStorage implements IStorage {
     const table: Table = { ...insertTable, id };
     await this.tables.insertOne(table);
     return table;
+  }
+
+  async createManyTables(data: { quantity: number; sellerId: string; sellerName?: string }): Promise<Table[]> {
+    const { quantity, sellerId, sellerName } = data;
+
+    const lastTable = await this.tables.findOne({ sellerId }, { sort: { number: -1 } });
+    const startNumber = lastTable ? lastTable.number + 1 : 1;
+
+    const newTables: Table[] = [];
+    for (let i = 0; i < quantity; i++) {
+      newTables.push({
+        id: nanoid(),
+        number: startNumber + i,
+        status: "available",
+        sellerId,
+        sellerName,
+      });
+    }
+
+    if (newTables.length === 0) {
+      return [];
+    }
+
+    await this.tables.insertMany(newTables as any);
+
+    return newTables;
   }
 
   async updateTable(id: string, tableData: Partial<Table>): Promise<Table | undefined> {
@@ -131,9 +164,14 @@ export class MongoDBStorage implements IStorage {
     return this.tables.find().toArray();
   }
 
-  async getAvailableTables(): Promise<Table[]> {
-    return this.tables.find({ status: "available" }).toArray();
-  }
+async getAvailableTablesBySeller(sellerId: string): Promise<Table[]> {
+  console.log("🧠 Buscando mesas com sellerId:", sellerId);
+  return this.tables.find({
+    status: "available",
+    sellerId: sellerId,
+  }).toArray();
+}
+
 
   async getOccupiedTables(): Promise<Table[]> {
     return this.tables.find({ status: "occupied" }).toArray();
@@ -295,5 +333,120 @@ export class MongoDBStorage implements IStorage {
       total: result[0].total,
       count: result[0].count
     };
+  }
+
+  async getRevenueSummary(sellerId: string): Promise<{ today: number; thisMonth: number; thisYear: number }> {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const thisYearStart = new Date(now.getFullYear(), 0, 1);
+
+    const summaryPipeline = [
+      {
+        $match: {
+          sellerId: sellerId,
+          status: { $in: ["entregue", "paid", "arquivado"] } // Consider only completed orders
+        }
+      },
+      {
+        $facet: {
+          today: [
+            { $match: { createdAt: { $gte: todayStart } } },
+            { $group: { _id: null, total: { $sum: "$total" } } }
+          ],
+          thisMonth: [
+            { $match: { createdAt: { $gte: thisMonthStart } } },
+            { $group: { _id: null, total: { $sum: "$total" } } }
+          ],
+          thisYear: [
+            { $match: { createdAt: { $gte: thisYearStart } } },
+            { $group: { _id: null, total: { $sum: "$total" } } }
+          ]
+        }
+      }
+    ];
+
+    const result = await this.orders.aggregate(summaryPipeline).toArray();
+
+    return {
+      today: result[0]?.today[0]?.total || 0,
+      thisMonth: result[0]?.thisMonth[0]?.total || 0,
+      thisYear: result[0]?.thisYear[0]?.total || 0,
+    };
+  }
+
+  async getDailyRevenue(sellerId: string): Promise<{ date: string; total: number }[]> {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const pipeline = [
+      {
+        $match: {
+          sellerId: sellerId,
+          status: { $in: ["entregue", "paid", "arquivado"] },
+          createdAt: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          total: { $sum: "$total" }
+        }
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, date: "$_id", total: "$total" } }
+    ];
+
+    return this.orders.aggregate(pipeline).toArray();
+  }
+
+  async getMonthlyRevenue(sellerId: string): Promise<{ month: string; total: number }[]> {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+    const pipeline = [
+      {
+        $match: {
+          sellerId: sellerId,
+          status: { $in: ["entregue", "paid", "arquivado"] },
+          createdAt: { $gte: oneYearAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
+          total: { $sum: "$total" }
+        }
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, month: "$_id", total: "$total" } }
+    ];
+
+    return this.orders.aggregate(pipeline).toArray();
+  }
+
+  async getYearlyRevenue(sellerId: string): Promise<{ year: string; total: number }[]> {
+    const fiveYearsAgo = new Date();
+    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+
+    const pipeline = [
+      {
+        $match: {
+          sellerId: sellerId,
+          status: { $in: ["entregue", "paid", "arquivado"] },
+          createdAt: { $gte: fiveYearsAgo }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y", date: "$createdAt" } },
+          total: { $sum: "$total" }
+        }
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, year: "$_id", total: "$total" } }
+    ];
+
+    return this.orders.aggregate(pipeline).toArray();
   }
 }

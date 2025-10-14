@@ -49,6 +49,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Setup authentication routes (/api/register, /api/login, /api/logout, /api/user)
   setupAuth(app);
+
+  app.post("/api/users/find", async (req, res) => {
+    try {
+      const { cpfOrPhone } = req.body;
+      if (!cpfOrPhone) {
+        return res.status(400).json({ message: "CPF ou telefone é obrigatório" });
+      }
+
+      const user = await storage.getUserByCpfouCnpj(cpfOrPhone);
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      // Don't return the password
+      const { password, ...userWithoutPassword } = user;
+      res.json({ user: userWithoutPassword });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar usuário" });
+    }
+  });
+
+  app.patch("/api/users/:userId/password", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { password } = req.body;
+
+      if (!password) {
+        return res.status(400).json({ message: "A nova senha é obrigatória" });
+      }
+
+      // Hash the new password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const user = await storage.updateUser(userId, { password: hashedPassword });
+
+      if (!user) {
+        return res.status(404).json({ message: "Usuário não encontrado" });
+      }
+
+      res.json({ message: "Senha atualizada com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao atualizar senha" });
+    }
+  });
+
   
   // Rota para obter usuários administradores (donos de carrinhos)
   app.get("/api/users/sellers", async (req, res) => {
@@ -64,7 +109,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Table routes
   app.get("/api/tables", isAuthenticated, async (req, res) => {
     try {
-      const tables = await storage.listTables();
+      let tables = await storage.listTables();
+      if (req.user?.role === 'admin') {
+        tables = tables.filter(table => table.sellerId === req.user.cpfouCnpj);
+      }
       res.json(tables);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar mesas" });
@@ -73,28 +121,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Esta rota está disponível publicamente para permitir o registro de usuários com seleção de mesa
   app.get("/api/tables/available", async (req, res) => {
+  try {
+    const { sellerId } = req.query;
+    if (!sellerId) {
+      return res.status(400).json({ message: "Parâmetro sellerId é obrigatório" });
+    }
+
+    const tables = await storage.getAvailableTablesBySeller(sellerId.toString());
+    const seller = await storage.getUserByCpfouCnpj(sellerId.toString());
+
+    res.json({
+      tables,
+      settings: {
+        tableNaming: seller?.tableNaming || 'mesa',
+        showOrderStatus: seller?.showOrderStatus !== undefined ? seller.showOrderStatus : true,
+      }
+    });
+  } catch (error) {
+    console.error("Erro ao buscar mesas:", error);
+    res.status(500).json({ message: "Erro ao buscar mesas disponíveis" });
+  }
+});
+
+
+ app.post("/api/tables", isAuthenticated, async (req, res) => {
+  if (req.user?.role !== "admin") {
+    return res.status(403).json({ message: "Acesso negado" });
+  }
+
+  try {
+    const { number } = req.body;
+
+    const table = await storage.createTable({
+      number,
+      status: "available",
+      sellerId: req.user.cpfouCnpj,
+      sellerName: req.user.username
+    });
+
+    res.json(table);
+  } catch (error) {
+    res.status(500).json({ message: "Erro ao criar mesa" });
+  }
+});
+
+app.post("/api/tables/bulk", isAdmin, async (req, res) => {
     try {
-      const tables = await storage.getAvailableTables();
-      res.json(tables);
+      const { quantity } = req.body;
+      const sellerId = req.user?.cpfouCnpj;
+
+      if (!quantity || quantity <= 0) {
+        return res.status(400).json({ message: "Quantidade inválida" });
+      }
+      if (!sellerId) {
+        return res.status(400).json({ message: "Vendedor não encontrado" });
+      }
+
+      const tables = await storage.createManyTables({
+        quantity,
+        sellerId,
+        sellerName: req.user?.username,
+      });
+
+      res.status(201).json(tables);
     } catch (error) {
-      res.status(500).json({ message: "Erro ao buscar mesas disponíveis" });
+      res.status(500).json({ message: "Erro ao criar mesas" });
     }
   });
 
-  app.post("/api/tables", isAuthenticated, async (req, res) => {
-    if (req.user?.role !== "admin") {
-      return res.status(403).json({ message: "Acesso negado" });
-    }
-    try {
-      const { number } = req.body;
-      const table = await storage.createTable({ number, status: "available" });
-      res.json(table);
-    } catch (error) {
-      res.status(500).json({ message: "Erro ao criar mesa" });
-    }
-  });
 
-  app.put("/api/tables/:id", isAuthenticated, async (req, res) => {
+  app.patch("/api/tables/:id", isAuthenticated, async (req, res) => {
     if (req.user?.role !== "admin") {
       return res.status(403).json({ message: "Acesso negado" });
     }
@@ -159,20 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/tables/:id", isAdmin, async (req, res) => {
-    try {
-      const id = req.params.id;
-      const tableData = req.body;
-      const table = await storage.updateTable(id, tableData);
-      
-      if (!table) {
-        return res.status(404).json({ message: "Mesa não encontrada" });
-      }
-      res.json(table);
-    } catch (error) {
-      res.status(500).json({ message: "Erro ao atualizar mesa" });
-    }
-  });
+
 
   app.delete("/api/tables/:id", isAdmin, async (req, res) => {
     try {
@@ -231,8 +314,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Adicionar o sellerId e sellerName ao produto sendo criado
       const productData = {
         ...req.body,
-        sellerId: req.user?.id,
-        sellerName: req.user?.name || req.user?.username,
+        sellerId: req.user?.cpfouCnpj,
+        sellerName: req.user?.sellerName || req.user?.username,
       };
       
       const validatedProduct = insertProductSchema.parse(productData);
@@ -280,7 +363,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Order routes
   app.get("/api/orders", isAuthenticated, async (req, res) => {
     try {
-      const orders = await storage.listOrders();
+      let orders = await storage.listOrders();
+      if (req.user?.role === 'admin') {
+        orders = orders.filter(order => order.sellerId === req.user.cpfouCnpj);
+      }
       res.json(orders);
     } catch (error) {
       res.status(500).json({ message: "Erro ao buscar pedidos" });
@@ -328,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/users/:userId/orders", isAuthenticated, async (req, res) => {
     try {
       // Garantir que um cliente só possa ver seus próprios pedidos
-      if (req.user?.role === "client" && req.user?.id !== req.params.userId) {
+      if (req.user?.role === "client" && req.user?.cpfouCnpj !== req.params.userId) {
         return res.status(403).json({ message: "Acesso negado" });
       }
       
@@ -362,14 +448,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/orders", isAuthenticated, async (req, res) => {
     try {
+      console.log("--- Creating Order ---");
+      console.log("Request Body:", req.body);
+      console.log("User:", req.user);
+
       // Add user info to the order if available
       const orderData = {
         ...req.body,
       };
       
       if (req.user) {
-        orderData.userId = req.user.id;
-        orderData.userName = req.user.name || req.user.username;
+        orderData.userId = req.user.cpfouCnpj;
+        orderData.userName = req.user.username || req.user.username;
         
         // Se o usuário for cliente, adicionar o sellerId associado ao cliente ao pedido
         if (req.user.role === "client" && req.user.sellerId) {
@@ -377,8 +467,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           orderData.sellerName = req.user.sellerName; // Nome do dono do carrinho, se disponível
         } else if (req.user.role === "admin") {
           // Se o usuário for admin (dono do carrinho), adicionar seu próprio ID
-          orderData.sellerId = req.user.id;
-          orderData.sellerName = req.user.name || req.user.username;
+          orderData.sellerId = req.user.cpfouCnpj;
+          orderData.sellerName = req.user.username || req.user.username;
         }
         
         // Permitimos que clientes façam múltiplos pedidos na mesma mesa
@@ -386,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (req.user.role === "client") {
           const userOrders = await storage.listOrders();
           const activeUserOrders = userOrders.filter(order => 
-            order.userId === req.user?.id && 
+            order.userId === req.user?.cpfouCnpj && 
             order.tableId !== orderData.tableId && 
             ["aguardando", "em_preparo"].includes(order.status)
           );
@@ -402,14 +492,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Gerar um código de pedido aleatório de 4 dígitos
       const orderCode = Math.floor(1000 + Math.random() * 9000);
       
-      const validatedOrder = insertOrderSchema.parse({
+      const orderToValidate = {
         ...orderData,
         orderCode
-      });
+      };
+
+      console.log("Order to validate:", orderToValidate);
+
+      const validatedOrder = insertOrderSchema.parse(orderToValidate);
       
+      console.log("Validated Order:", validatedOrder);
+
       const order = await storage.createOrder(validatedOrder);
+
+      // Update table with customer info
+      if (order) {
+        await storage.updateTable(order.tableId, {
+          status: "occupied",
+          customerName: orderData.userName,
+          customerPhone: orderData.userPhone, // Assuming userPhone is passed in orderData
+        });
+      }
+
       res.status(201).json(order);
     } catch (error) {
+      console.error("--- Error Creating Order ---");
+      console.error(error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Dados inválidos", 
@@ -511,9 +619,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userData = insertUserSchema.parse(req.body);
       
       // Check if username already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
+      const existingUser = await storage.getUserByCpfouCnpj(userData.cpfouCnpj);
       if (existingUser) {
-        return res.status(400).json({ message: "Nome de usuário já existe" });
+        return res.status(400).json({ message: "Usuário já existe" });
       }
       
       // Hash password
@@ -564,20 +672,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", isAdmin, async (req, res) => {
+  app.delete("/api/users/:id", isAuthenticated, async (req, res) => {
     try {
-      // Prevent deleting the current user
-      if (req.user && req.params.id === req.user.id) {
-        return res.status(400).json({ message: "Não é possível excluir o próprio usuário" });
+      const userToDeleteId = req.params.id;
+      const requester = req.user;
+
+      // Allow admin to delete any user, or user to delete themselves
+      if (requester.role !== 'admin' && requester.cpfouCnpj !== userToDeleteId) {
+        return res.status(403).json({ message: "Acesso negado" });
       }
-      
-      const success = await storage.deleteUser(req.params.id);
+
+      const success = await storage.deleteUser(userToDeleteId);
       if (!success) {
         return res.status(404).json({ message: "Usuário não encontrado" });
       }
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Erro ao excluir usuário" });
+    }
+  });
+
+  // Stats routes (admin only)
+  app.get("/api/stats/revenue/summary", isAdmin, async (req, res) => {
+    try {
+      const sellerId = req.user.cpfouCnpj;
+      const summary = await storage.getRevenueSummary(sellerId);
+      res.json(summary);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar resumo de faturamento" });
+    }
+  });
+
+  app.get("/api/stats/revenue/daily", isAdmin, async (req, res) => {
+    try {
+      const sellerId = req.user.cpfouCnpj;
+      const dailyRevenue = await storage.getDailyRevenue(sellerId);
+      res.json(dailyRevenue);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar faturamento diário" });
+    }
+  });
+
+  app.get("/api/stats/revenue/monthly", isAdmin, async (req, res) => {
+    try {
+      const sellerId = req.user.cpfouCnpj;
+      const monthlyRevenue = await storage.getMonthlyRevenue(sellerId);
+      res.json(monthlyRevenue);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar faturamento mensal" });
+    }
+  });
+
+  app.get("/api/stats/revenue/yearly", isAdmin, async (req, res) => {
+    try {
+      const sellerId = req.user.cpfouCnpj;
+      const yearlyRevenue = await storage.getYearlyRevenue(sellerId);
+      res.json(yearlyRevenue);
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao buscar faturamento anual" });
     }
   });
 

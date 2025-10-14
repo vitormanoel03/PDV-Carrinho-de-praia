@@ -23,7 +23,7 @@ const MemoryStore = createMemoryStore(session);
 export interface IStorage {
   // User related methods
   getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByCpfouCnpj(cpfouCnpj: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   listUsers(): Promise<User[]>;
   updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
@@ -36,7 +36,8 @@ export interface IStorage {
   updateTable(id: string, table: Partial<Table>): Promise<Table | undefined>;
   deleteTable(id: string): Promise<boolean>;
   listTables(): Promise<Table[]>;
-  getAvailableTables(): Promise<Table[]>;
+ getAvailableTablesBySeller(sellerId: string): Promise<Table[]>;
+
   getOccupiedTables(): Promise<Table[]>;
 
   // Product related methods

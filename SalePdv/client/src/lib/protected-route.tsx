@@ -1,47 +1,31 @@
 import { useAuth } from "@/hooks/use-auth";
+import { Navigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { Redirect, Route } from "wouter";
 
-export function ProtectedRoute({
-  path,
-  component: Component,
-  role,
-}: {
-  path: string;
-  component: () => React.JSX.Element;
+type ProtectedRouteProps = {
+  children: React.ReactNode;
   role?: "admin" | "client";
-}) {
+};
+
+export function ProtectedRoute({ children, role }: ProtectedRouteProps) {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return (
-      <Route path={path}>
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-beach-yellow" />
-        </div>
-      </Route>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-beach-yellow" />
+      </div>
     );
   }
 
-  // Redireciona para a página de login se não estiver autenticado
   if (!user) {
-    return (
-      <Route path={path}>
-        <Redirect to="/auth" />
-      </Route>
-    );
+    return <Navigate to="/auth" replace />;
   }
 
-  // Verifica se o usuário tem a role necessária (se especificada)
   if (role && user.role !== role) {
-    // Redireciona para a página adequada com base no papel do usuário
     const redirectPath = user.role === "admin" ? "/admin" : "/order";
-    return (
-      <Route path={path}>
-        <Redirect to={redirectPath} />
-      </Route>
-    );
+    return <Navigate to={redirectPath} replace />;
   }
 
-  return <Route path={path} component={Component} />;
+  return <>{children}</>;
 }

@@ -1,27 +1,35 @@
 import { z } from "zod";
 
-// User Schema
 export const userSchema = z.object({
-  id: z.string(),
-  username: z.string().min(3, "Nome de usuário deve ter pelo menos 3 caracteres"),
+  cpfouCnpj: z.string(), // CPF ou CNPJ (para admin)
   password: z.string().min(6, "Senha deve ter pelo menos 6 caracteres"),
-  name: z.string().optional(),
-  role: z.enum(["admin", "client"]).default("client"), // "admin" para dono do carrinho, "client" para clientes
-  tableId: z.string().optional(), // Mesa associada ao cliente
-  tableNumber: z.number().int().optional(), // Número da mesa para exibição
-  sellerId: z.string().optional(), // ID do dono do carrinho associado a este cliente
-  sellerName: z.string().optional(), // Nome do dono do carrinho para exibição
+  username: z.string(), // Nome do usuário (cliente ou admin)
+  phone: z.string().optional(),
+  role: z.enum(["admin", "client"]).default("client"), // Define o tipo do usuário
+  tableId: z.string().optional(),     // ID da mesa (cliente
+  
+  tableNumber: z.number().int().optional(), // Número da mesa (cliente)
+  sellerId: z.string().optional(),        // CPF/CNPJ do admin (para cliente)
+  sellerName: z.string().optional(),     // Nome do admin (para cliente)
+  tableNaming: z.enum(['mesa', 'guarda-sol']).default('mesa').optional(),
+  showOrderStatus: z.boolean().default(true).optional(),
 });
 
-export const insertUserSchema = userSchema.omit({ id: true });
+export const insertUserSchema = userSchema ;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = z.infer<typeof userSchema>;
 
 // Mesa Schema
 export const tableSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
+  sellerId: z.string(), // ID do dono do carrinho associado a esta mesa
+  sellerName: z.string(), // Nome do dono do carrinho para exibição
   number: z.number().int().min(1, "Número da mesa deve ser maior que 0"),
   status: z.enum(["available", "occupied"]).default("available"),
+  occupiedAt: z.date().optional(),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
+});"),
   occupiedAt: z.date().optional(),
 });
 
@@ -66,10 +74,11 @@ export const orderSchema = z.object({
   tableNumber: z.number(),
   items: z.array(orderItemSchema),
   total: z.number().min(0),
-  status: z.enum(["aguardando", "em_preparo", "entregue", "cancelado"]).default("aguardando"),
+  status: z.enum(["aguardando", "em_preparo", "entregue", "cancelado","arquivado"]).default("aguardando"),
   userId: z.string().optional(), // ID do cliente que fez o pedido (opcional)
   userName: z.string().optional(), // Nome do cliente que fez o pedido (opcional)
-  sellerId: z.string().optional(), // ID do dono do carrinho que receberá o pedido
+  userPhone: z.string().optional(), // Telefone do cliente que fez o pedido (opcional)
+  sellerId: z.string().optional().nullable(), // ID do dono do carrinho que receberá o pedido
   sellerName: z.string().optional(), // Nome do dono do carrinho para exibição
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),

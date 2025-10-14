@@ -8,6 +8,7 @@ import { insertUserSchema, User } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { useNavigate } from "react-router-dom";
 
 type AuthContextType = {
   user: User | null;
@@ -18,8 +19,9 @@ type AuthContextType = {
   registerMutation: UseMutationResult<User, Error, InsertUser>;
 };
 
-type LoginData = Pick<InsertUser, "username" | "password">;
+
 type InsertUser = z.infer<typeof insertUserSchema>;
+type LoginData = Pick<InsertUser, "cpfouCnpj" | "password">;
 
 // Extended schema for registration with password confirmation
 const registerSchema = insertUserSchema.extend({
@@ -31,8 +33,10 @@ const registerSchema = insertUserSchema.extend({
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const {
     data: user,
     error,
@@ -42,41 +46,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
 
-  const loginMutation = useMutation({
-    mutationFn: async (credentials: LoginData) => {
-      const res = await apiRequest("POST", "/api/login", credentials);
-      return await res.json();
-    },
-    onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
-      toast({
-        title: "Login realizado com sucesso",
-        description: `Bem-vindo, ${user.name || user.username}!`,
-      });
-    },
-    onError: (error: Error) => {
-      console.error("Erro de autenticação:", error);
-      toast({
-        title: "Erro no login",
-        description: "Usuário ou senha inválidos. Por favor, tente novamente.",
-        variant: "destructive",
-      });
-    },
-  });
+
+
+
+
+const loginMutation = useMutation({
+  
+  mutationFn: async (credentials: LoginData) => {
+    const res = await apiRequest("POST", "/api/login", credentials);
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ message: "Erro de rede ou JSON inválido" }));
+      throw new Error(errorData.message || "Usuário ou senha inválidos.");
+    }
+    return await res.json();
+  },
+  onSuccess: (user: User) => {
+    queryClient.setQueryData(["/api/user"], user); 
+    queryClient.invalidateQueries({ queryKey: ["/api/user"] }); 
+
+    toast({
+      title: "Login realizado com sucesso",
+      description: `Bem-vindo, ${user.username}!`,
+    });
+
+    
+    const redirectPath = user.role === "admin" ? "/admin" : "/order";
+    navigate(redirectPath, { replace: true });
+  },
+  onError: (error: Error) => {
+    toast({
+      title: "Erro no login",
+      description: error.message || "Usuário ou senha inválidos. Por favor, tente novamente.",
+      variant: "destructive",
+    });
+  },
+});
+
 
   const registerMutation = useMutation({
     mutationFn: async (userData: any) => {
       // Remove confirmPassword before sending to API
       const { confirmPassword, ...userDataWithoutConfirmPassword } = userData;
       const res = await apiRequest("POST", "/api/register", userDataWithoutConfirmPassword);
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: "Erro de rede ou JSON inválido" }));
+        throw new Error(errorData.message || "Não foi possível criar a conta");
+      }
       return await res.json();
     },
     onSuccess: (user: User) => {
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/user"], user); 
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] }); 
+
       toast({
         title: "Registro realizado com sucesso",
-        description: `Bem-vindo, ${user.name || user.username}!`,
+        description: `Bem-vindo, ${user.username || user.username}!`,
       });
+
+      const redirectPath = user.role === "admin" ? "/admin" : "/order";
+      navigate(redirectPath, { replace: true });
     },
     onError: (error: Error) => {
       toast({

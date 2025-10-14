@@ -15,6 +15,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, LogOut, Plus, Trash2, ShoppingCart, CoffeeIcon, Umbrella, Sun, AlertTriangle, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+
+
 export default function ClientOrderPage() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
@@ -35,12 +37,20 @@ export default function ClientOrderPage() {
 
   // Buscar a mesa do cliente se já estiver definida ou mesas disponíveis caso contrário
   const {
-    data: tables = [],
+    data,
     isLoading: isLoadingTables,
-  } = useQuery<Table[]>({
-    queryKey: ["/api/tables/available"],
+  } = useQuery<{ tables: Table[], settings: { tableNaming: string, showOrderStatus: boolean } }>({
+    queryKey: ["/api/tables/available", user?.sellerId],
+    enabled: !!user?.sellerId,
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/tables/available?sellerId=${user?.sellerId}`);
+      return await res.json();
+    },
     staleTime: 10000,
   });
+
+  const tables = data?.tables || [];
+  const settings = data?.settings;
 
   // Também buscar a mesa atual do usuário para exibição correta
   const {
@@ -67,10 +77,10 @@ export default function ClientOrderPage() {
     isLoading: isLoadingOrders,
     refetch: refetchUserOrders,
   } = useQuery<Order[]>({
-    queryKey: [`/api/users/${user?.id}/orders`],
+    queryKey: [`/api/users/${user?.cpfouCnpj}/orders`],
     staleTime: 5000, // Atualizar mais frequentemente
-    enabled: !!user?.id,
-    refetchInterval: 10000, // Recarregar a cada 10 segundos para mostrar atualizações
+    enabled: !!user?.cpfouCnpj,
+    refetchInterval: 5000, // Recarregar a cada 5 segundos para mostrar atualizações
   });
 
   // Mutação para criar um novo pedido
@@ -231,7 +241,8 @@ export default function ClientOrderPage() {
       total: cartTotal,
       status: "aguardando",
       userId: user?.id,
-      userName: user?.name || user?.username,
+      userName: user?.username || user?.username,
+      userPhone: user?.phone,
       isPaid: false,
     };
 
@@ -264,7 +275,7 @@ export default function ClientOrderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-beach-sand">
+    <div className="min-h-screen bg-white">
       <header className="bg-beach-yellow text-black p-4 shadow-md">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-xl font-bold flex items-center">
@@ -273,23 +284,9 @@ export default function ClientOrderPage() {
             Carrinho de Praia
           </h1>
           <div className="flex items-center gap-4">
-            <span>Olá, {user?.name || user?.username}</span>
+            <span>Olá, {user?.username || user?.username}</span>
             <div className="flex items-center gap-2">
-              <Button 
-                variant="destructive" 
-                size="sm"
-                onClick={() => {
-                  if (confirm("Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita.")) {
-                    fetch("/api/users/" + user?.id, {
-                      method: "DELETE",
-                    }).then(() => {
-                      window.location.href = "/auth";
-                    });
-                  }
-                }}
-              >
-                Excluir Conta
-              </Button>
+
               <Button 
                 variant="destructive" 
                 size="sm" 
@@ -315,7 +312,7 @@ export default function ClientOrderPage() {
                   </span>
                   {selectedTable && (
                     <Badge className="bg-white text-black">
-                      Mesa {(user?.tableNumber) || (tables.find(t => t.id === selectedTable)?.number) || "-"}
+                      {settings?.tableNaming || 'Mesa'} {(user?.tableNumber) || (tables.find(t => t.id === selectedTable)?.number) || "-"}
                     </Badge>
                   )}
                   {pendingOrdersCount > 0 && (
@@ -328,11 +325,11 @@ export default function ClientOrderPage() {
               <CardContent className="p-4">
                 {!selectedTable ? (
                   <div className="text-center py-6">
-                    <h3 className="font-bold mb-2">Selecione uma mesa</h3>
+                    <h3 className="font-bold mb-2">Selecione um(a) {settings?.tableNaming || 'Mesa'}</h3>
                     {/* Se o usuário for cliente e já tiver uma mesa associada, mostrar botão de novo pedido */}
                     {user?.role === 'client' && user?.tableId ? (
                       <div className="bg-yellow-50 p-4 rounded-lg border border-beach-yellow">
-                        <p className="text-gray-700">Mesa {user.tableNumber}</p>
+                        <p className="text-gray-700">{settings?.tableNaming || 'Mesa'} {user.tableNumber}</p>
                         <Button
                           className="mt-2 w-full bg-beach-yellow text-black hover:bg-yellow-600"
                           onClick={() => setSelectedTable(user.tableId!)}
@@ -349,7 +346,7 @@ export default function ClientOrderPage() {
                             className="border-beach-yellow hover:bg-beach-yellow hover:text-black"
                             onClick={() => setSelectedTable(table.id!)}
                           >
-                            Mesa {table.number}
+                            {settings?.tableNaming || 'Mesa'} {table.number}
                           </Button>
                         ))}
                         {tables.length === 0 && (
@@ -372,28 +369,51 @@ export default function ClientOrderPage() {
                       ))}
                     </TabsList>
                     <ScrollArea className="h-[50vh]">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {filteredProducts.map((product) => (
-                          <Card key={product.id} className="overflow-hidden">
-                            <CardHeader className="p-3 bg-beach-white">
-                              <CardTitle className="text-base flex justify-between">
-                                <span>{product.name}</span>
-                                <span className="text-beach-red">R$ {product.price.toFixed(2)}</span>
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-3">
-                              {product.description && <p>Descrição: {product.description}</p>}
-                              <div className="flex items-center gap-2 mt-2">
+                      <div className="divide-y divide-gray-200 border rounded-lg">
+                        {filteredProducts.map((product) => {
+                          const quantityInputId = `quantity-${product.id}`;
+                          return (
+                            <div key={product.id} className="p-4 flex items-center gap-4">
+                              <img
+                                src={product.image || 'https://via.placeholder.com/150'}
+                                alt={product.name}
+                                className="w-24 h-24 object-cover rounded-md"
+                              />
+                              <div className="flex-grow">
+                                <h4 className="text-lg font-semibold">{product.name}</h4>
+                                <p className="text-sm text-gray-500">{product.description || 'Sem descrição'}</p>
+                                <p className="text-lg font-bold text-beach-red mt-2">R$ {product.price.toFixed(2)}</p>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" onClick={() => {
+                                  const input = document.getElementById(quantityInputId) as HTMLInputElement;
+                                  if (input) {
+                                    const currentValue = parseInt(input.value, 10);
+                                    if (currentValue > 1) {
+                                      input.value = (currentValue - 1).toString();
+                                    }
+                                  }
+                                }}>
+                                  <Minus className="h-4 w-4" />
+                                </Button>
                                 <Input
                                   type="number"
                                   min="1"
                                   defaultValue="1"
-                                  className="w-20"
-                                  id={`quantity-${product.id}`}
+                                  className="w-16 text-center"
+                                  id={quantityInputId}
                                 />
+                                <Button variant="outline" size="icon" onClick={() => {
+                                  const input = document.getElementById(quantityInputId) as HTMLInputElement;
+                                  if (input) {
+                                    input.value = (parseInt(input.value, 10) + 1).toString();
+                                  }
+                                }}>
+                                  <Plus className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   onClick={() => {
-                                    const input = document.getElementById(`quantity-${product.id}`) as HTMLInputElement;
+                                    const input = document.getElementById(quantityInputId) as HTMLInputElement;
                                     const quantity = parseInt(input.value) || 1;
                                     addToCart(product, quantity);
                                   }}
@@ -402,13 +422,12 @@ export default function ClientOrderPage() {
                                   Adicionar
                                 </Button>
                               </div>
-                            </CardContent>
-                          </Card>
-                        ))}
-
+                            </div>
+                          )
+                        })}
                         {filteredProducts.length === 0 && (
-                          <div className="text-center py-6 text-gray-500 col-span-2">
-                            Nenhum produto encontrado nesta categoria
+                          <div className="p-6 text-center text-gray-500">
+                            Nenhum produto encontrado nesta categoria.
                           </div>
                         )}
                       </div>
@@ -431,73 +450,68 @@ export default function ClientOrderPage() {
             </Card>
 
             {/* Meus Pedidos */}
-            <Card>
-              <CardHeader className="bg-beach-yellow text-black">
-                <CardTitle>Meus Pedidos</CardTitle>
-              </CardHeader>
-              <CardContent className="p-4">
+            <div className="border rounded-lg md:col-span-12">
+              <div className="p-4 bg-gray-50 border-b">
+                <h2 className="text-lg font-semibold">Meus Pedidos</h2>
+              </div>
+              <div className="divide-y divide-gray-200">
                 {userOrders.length > 0 ? (
-                  <ScrollArea className="h-[30vh]">
-                    <div className="space-y-4">
-                      {userOrders.map(order => {
-                        const statusInfo = formatOrderStatus(order.status);
-                        return (
-                          <Card key={order.id} className="overflow-hidden">
-                            <CardHeader className={`p-3 ${statusInfo.color}`}>
-                              <div className="flex justify-between items-center">
-                                <CardTitle className="text-sm">
-                                  Mesa {order.tableNumber} - Pedido #{order.orderCode || parseInt(order.id?.substring(0, 8) || "0", 16)}
-                                </CardTitle>
-                                <Badge className={`${statusInfo.color} flex items-center gap-2`}>
-                                  {statusInfo.text}
-                                  {order.status === "aguardando" && (
-                                    <div className="w-2 h-2 bg-beach-orange rounded-full animate-pulse"></div>
-                                  )}
-                                </Badge>
+                  userOrders.map(order => (
+                    <div key={order.id} className="p-4">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-md font-semibold">
+                          Pedido #{order.orderCode || parseInt(order.id?.substring(0, 8) || "0", 16)}
+                        </h3>
+                        <Badge className={`${formatOrderStatus(order.status).color}`}>
+                          {formatOrderStatus(order.status).text}
+                        </Badge>
+                      </div>
+                      <div className="space-y-4">
+                        {order.items.map((item, idx) => {
+                          const product = products.find(p => p.id === item.productId);
+                          return (
+                            <div key={idx} className="flex items-center gap-4 border-b pb-4">
+                              <img
+                                src={product?.image || 'https://via.placeholder.com/150'}
+                                alt={item.productName}
+                                className="w-16 h-16 object-cover rounded-md"
+                              />
+                              <div className="flex-grow">
+                                <p className="font-semibold">{item.productName}</p>
+                                <p className="text-sm text-gray-500">x {item.quantity}</p>
                               </div>
-                            </CardHeader>
-                            <CardContent className="p-3">
-                              <div className="space-y-1 text-sm">
-                                {order.items.map((item, idx) => (
-                                  <div key={idx} className="flex justify-between">
-                                    <span>{item.quantity}x {item.productName}</span>
-                                    <span>R$ {item.price.toFixed(2)}</span>
-                                  </div>
-                                ))}
-                                <div className="pt-2 border-t mt-2 font-semibold flex justify-between">
-                                  <span>Total:</span>
-                                  <span>R$ {order.total.toFixed(2)}</span>
-                                </div>
-                                {/* Botão de editar para pedidos com status "aguardando" */}
-                                {order.status === "aguardando" && (
-                                  <div className="mt-3 flex justify-end">
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm"
-                                      className="text-xs border-beach-yellow hover:bg-beach-yellow hover:text-black"
-                                      onClick={() => {
-                                        setEditingOrder(order);
-                                        setEditDialogOpen(true);
-                                      }}
-                                    >
-                                      Editar Pedido
-                                    </Button>
-                                  </div>
-                                )}
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
+                              <p className="font-semibold">R$ {item.price.toFixed(2)}</p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                      <div className="pt-4 font-semibold flex justify-between">
+                        <span>Total do Pedido:</span>
+                        <span>R$ {order.total.toFixed(2)}</span>
+                      </div>
+                      {order.status === "aguardando" && (
+                        <div className="mt-4 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setEditingOrder(order);
+                              setEditDialogOpen(true);
+                            }}
+                          >
+                            Editar Pedido
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  </ScrollArea>
+                  ))
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    Você ainda não fez nenhum pedido
+                  <div className="p-6 text-center text-gray-500">
+                    Você ainda não fez nenhum pedido.
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
 
           {/* Lado direito - Carrinho/Resumo do pedido */}

@@ -6,11 +6,12 @@ import bcrypt from "bcrypt";
 import { storage } from "./storage";
 import { User, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+import { MongoDBStorage } from "./mongodb-storage";
 
 declare global {
   namespace Express {
     // Extend the Express User interface with our User type
-    interface User extends User {
+    interface Userapp extends User {
       // All properties already defined in the User type from schema.ts
     }
   }
@@ -43,10 +44,15 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
+ passport.use(
+  new LocalStrategy(
+    {
+      usernameField: "cpfouCnpj", // 👈 diz para o passport qual campo usar
+      passwordField: "password"
+    },
+    async (cpfouCnpj, password, done) => {
       try {
-        const user = await storage.getUserByUsername(username);
+        const user = await storage.getUserByCpfouCnpj(cpfouCnpj);
         if (!user || !(await comparePasswords(password, user.password))) {
           return done(null, false);
         } else {
@@ -55,13 +61,15 @@ export function setupAuth(app: Express) {
       } catch (error) {
         return done(error);
       }
-    }),
-  );
+    }
+  )
+);
 
-  passport.serializeUser((user, done) => done(null, user.id));
+
+  passport.serializeUser((user, done) => done(null, user.cpfouCnpj));
   passport.deserializeUser(async (id: string, done) => {
     try {
-      const user = await storage.getUser(id);
+      const user = await storage.getUserByCpfouCnpj(id);
       done(null, user);
     } catch (error) {
       done(error);
@@ -74,7 +82,7 @@ export function setupAuth(app: Express) {
       const userData = insertUserSchema.parse(req.body);
       
       // Check if username already exists
-      const existingUser = await storage.getUserByUsername(userData.username);
+      const existingUser = await storage.getUserByCpfouCnpj(userData.cpfouCnpj);
       if (existingUser) {
         return res.status(400).json({ message: "Nome de usuário já existe" });
       }
@@ -85,6 +93,11 @@ export function setupAuth(app: Express) {
         ...userData,
         password: hashedPassword,
       });
+
+      // Atualiza o status da mesa para "ocupada"
+      if (userData.tableId) {
+        await storage.updateTable(userData.tableId, { status: "occupied" });
+      }
 
       // Remove password from response
       const { password, ...userWithoutPassword } = user;
@@ -106,17 +119,19 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    if (!req.body.username || !req.body.password) {
-      return res.status(400).json({ message: "Username e password são obrigatórios" });
+    console.log("Login attempt:", req.body);
+    if (!req.body.cpfouCnpj || !req.body.password) {
+      return res.status(400).json({ message: "CPF/CNPJ e password são obrigatórios" });
     }
     
-    passport.authenticate("local", (err, user, info) => {
+    passport.authenticate("local", (err: Error | null, user: User | false, info: any)  => {
+      console.log("Passport authenticate callback:", { err, user, info });
       if (err) {
         console.error("Erro de autenticação:", err);
         return res.status(500).json({ message: "Erro interno do servidor" });
       }
-      if (!user) return res.status(401).json({ message: "Usuário ou senha inválidos" });
-      
+      if (!user) return res.status(401).json({ message: "Usuário ou senha inválidos" })
+      console.log("Este é o que o back-end ta recebendo",req.body.cpfouCnpj);
       req.login(user, (err) => {
         if (err) return next(err);
         
