@@ -3,10 +3,10 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, LogIn, UserPlus, Waves, Sun } from "lucide-react";
+import { Eye, EyeOff, LogIn, UserPlus, Waves, Sun, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -25,9 +25,11 @@ import { apiRequest } from "@/lib/queryClient";
 import InputMask from "react-input-mask";
 import { cpf, cnpj } from "cpf-cnpj-validator";
 import { motion } from "framer-motion";
-import image1 from "../images/Pessoasnapraia/pexels-efrem-efre-2786187-33768199.jpg";
-import image2 from "../images/Pessoasnapraia/pexels-josh-hild-1270765-17391950.jpg";
-import image3 from "../images/Pessoasnapraia/pexels-olly-3811310.jpg";
+import imageStep1 from "../images/Pessoasnapraia/pexels-efrem-efre-2786187-33768199.jpg";
+import imageStep2 from "../images/Pessoasnapraia/veio na praia.jpg";
+import imageStep3 from "../images/Pessoasnapraia/mulher na p.jpg";
+import imageFeature1 from "../images/Pessoasnapraia/pexels-josh-hild-1270765-17391950.jpg";
+import imageFeature2 from "../images/Pessoasnapraia/pexels-olly-3811310.jpg";
 
 const baseSchema = z.object({
   inputType: z.enum(["cpf", "cnpj", "phone"]).default("cpf"),
@@ -737,19 +739,19 @@ const animationProps = {
 
           <div className="mt-20 grid gap-16 lg:grid-cols-3 lg:gap-x-5 lg:gap-y-12">
             <motion.div {...animationPropsRight} className="flex flex-col items-center text-center">
-              <img src={image1} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
+              <img src={imageFeature1} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
               <h3 className="text-2xl font-bold text-gray-900">Reduza Erros no Atendimento</h3>
               <p className="mt-2 text-lg text-gray-600">Garanta a precisão nas entregas e evite o esquecimento de pedidos.</p>
             </motion.div>
 
             <motion.div {...animationProps} className="flex flex-col items-center text-center">
-              <img src={image2} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
+              <img src={imageFeature2} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
               <h3 className="text-2xl font-bold text-gray-900">Minimize a Inadimplência</h3>
               <p className="mt-2 text-lg text-gray-600">Ofereça mais opções de pagamento e fidelize seus clientes.</p>
             </motion.div>
 
             <motion.div {...animationPropsRight} className="flex flex-col items-center text-center">
-              <img src={image3} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
+              <img src={imageStep1} alt="Pessoas na praia" className="w-full h-64 bg-gray-300 rounded-lg mb-4 object-cover" />
               <h3 className="text-2xl font-bold text-gray-900">Agilize o Processo de Pedidos</h3>
               <p className="mt-2 text-lg text-gray-600">Proporcione uma experiência de compra mais fluida e incentive o consumo.</p>
             </motion.div>
@@ -762,6 +764,59 @@ const animationProps = {
           </motion.div>
         </div>
       </div>
+      <section id="how-it-works" className="bg-white">
+        <div className="min-h-screen flex flex-col justify-center items-center p-8">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="text-center md:text-left">
+              <span className="text-9xl font-bold text-gray-200">1</span>
+              <h2 className="text-4xl font-bold mb-4">Cadastre seus produtos</h2>
+              <p className="text-lg">O dono do carrinho cadastra seus produtos de forma simples e rápida.</p>
+            </div>
+            <div className="w-full md:w-1/2 h-64 bg-gray-300 rounded-lg flex items-center justify-center">
+              <img src={imageStep1} alt="Cadastre seus produtos" className="w-full h-full object-cover rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="min-h-screen flex flex-col justify-center items-center p-8 bg-gray-50">
+          <div className="flex flex-col md:flex-row-reverse items-center gap-8">
+            <div className="text-center md:text-left">
+              <span className="text-9xl font-bold text-gray-200">2</span>
+              <h2 className="text-4xl font-bold mb-4">Pedido direto do guarda-sol</h2>
+              <p className="text-lg">O cliente acessa o sistema através de um QR code no seu celular e faz o pedido direto do guarda-sol, sem precisar de um atendente.</p>
+            </div>
+            <div className="w-full md:w-1/2 h-64 bg-gray-300 rounded-lg flex items-center justify-center">
+              <img src={imageStep2} alt="Pedido direto do guarda-sol" className="w-full h-full object-cover rounded-lg" />
+            </div>
+          </div>
+        </div>
+        <div className="min-h-screen flex flex-col justify-center items-center p-8">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="text-center md:text-left">
+              <span className="text-9xl font-bold text-gray-200">3</span>
+              <h2 className="text-4xl font-bold mb-4">Preparo por ordem de chegada</h2>
+              <p className="text-lg">O pedido aparece para ser preparado por ordem de chegada na tela do seu dispositivo.</p>
+            </div>
+            <div className="w-full md:w-1/2 h-64 bg-gray-300 rounded-lg flex items-center justify-center">
+              <img src={imageStep3} alt="Preparo por ordem de chegada" className="w-full h-full object-cover rounded-lg" />
+            </div>
+          </div>
+        </div>
+      </section>
+        <section id="security" className="bg-gray-100 py-20 px-4 md:px-6">
+          <div className="container mx-auto">
+            <h2 className="text-3xl font-bold text-center mb-12">Segurança e Disponibilidade</h2>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-8">
+              <div className="flex items-center gap-4">
+                <CheckCircle className="text-green-500" size={32} />
+                <p className="text-lg">Sistema testado e seguro, seguindo a LGPD.</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <CheckCircle className="text-green-500" size={32} />
+                <p className="text-lg">Alta disponibilidade e backups para garantir a continuidade do seu negócio.</p>
+              </div>
+            </div>
+          </div>
+        </section>
     </div>
   );
   }

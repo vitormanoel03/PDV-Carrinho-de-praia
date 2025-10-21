@@ -6,7 +6,7 @@ export const userSchema = z.object({
   username: z.string(), // Nome do usuário (cliente ou admin)
   phone: z.string().optional(),
   role: z.enum(["admin", "client"]).default("client"), // Define o tipo do usuário
-  tableId: z.string().optional(),     // ID da mesa (cliente
+  tableId: z.string().optional(),     // ID da mesa (cliente)
   
   tableNumber: z.number().int().optional(), // Número da mesa (cliente)
   sellerId: z.string().optional(),        // CPF/CNPJ do admin (para cliente)
@@ -29,8 +29,6 @@ export const tableSchema = z.object({
   occupiedAt: z.date().optional(),
   customerName: z.string().optional(),
   customerPhone: z.string().optional(),
-});"),
-  occupiedAt: z.date().optional(),
 });
 
 export const insertTableSchema = tableSchema.omit({ id: true, occupiedAt: true });
